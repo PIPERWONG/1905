@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tm gyroid 2 — 本地复刻 (Shadertoy tXtyW8)</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+  #info {
+    position: absolute; left: 12px; bottom: 10px; z-index: 10;
+    font: 12px/1.6 -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+    color: rgba(255,255,255,.75); text-shadow: 0 1px 2px rgba(0,0,0,.8);
+    user-select: none; pointer-events: none;
+  }
+  #info a { color: #9cf; pointer-events: auto; }
+  #topbar { position: absolute; right: 12px; top: 10px; z-index: 30; display: flex; gap: 8px; align-items: center; }
+  #fps { font: 12px/1.4 monospace; color: rgba(255,255,255,.6);
+    text-shadow: 0 1px 2px rgba(0,0,0,.8); user-select: none; }
+  #topbar button, #hud button {
+    font: 12px/1 -apple-system, "PingFang SC", sans-serif; color: #dde;
+    background: rgba(20,20,35,.75); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  }
+  #topbar button:hover, #hud button:hover { background: rgba(50,50,80,.85); }
+  #panel {
+    position: absolute; right: 12px; top: 42px; z-index: 20;
+    width: min(300px, calc(100vw - 24px));
+    max-height: calc(100vh - 90px); overflow-y: auto;
+    background: rgba(12,12,22,.85); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 12px;
+    padding: 10px 14px 12px; color: #dde; user-select: none;
+    font: 12px/1.5 -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+  }
+  #panel h3 { margin: 10px 0 4px; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; color: #8ea; text-transform: uppercase; }
+  #panel h3:first-child { margin-top: 2px; }
+  .row { margin: 6px 0 2px; }
+  .row .lab { display: flex; justify-content: space-between; margin-bottom: 2px; }
+  .row .val { color: #9cf; font-family: monospace; }
+  .row input[type=range] { width: 100%; margin: 0; accent-color: #7aa7ff; }
+  .crow { display: flex; justify-content: space-between; align-items: center; margin: 5px 0; }
+  .crow input[type=color] { width: 42px; height: 22px; border: none; background: none; padding: 0; cursor: pointer; }
+  #btns { display: flex; gap: 8px; margin-top: 10px; }
+  #btns button { flex: 1; font: 12px/1 -apple-system, "PingFang SC", sans-serif; color: #dde;
+    background: rgba(60,60,90,.6); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px; padding: 7px 0; cursor: pointer; }
+  #btns button:hover { background: rgba(90,90,140,.7); }
+  #pausedTip { position: absolute; left: 12px; top: 10px; z-index: 10;
+    font: 12px/1.4 monospace; color: #fd8; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+    display: none; user-select: none; }
+  /* ---- 驾驶 HUD ---- */
+  #hud { position: absolute; left: 12px; top: 10px; z-index: 25; display: none;
+    font: 13px/1.8 -apple-system, "PingFang SC", sans-serif; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.9); user-select: none; }
+  #hud #eff { color: #8f8; }
+  #hud #near { color: #ffd255; }
+  #toast { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); z-index: 40;
+    font: 16px/1.4 -apple-system, "PingFang SC", sans-serif; color: #fff;
+    background: rgba(10,10,25,.75); border: 1px solid rgba(255,255,255,.2);
+    padding: 10px 22px; border-radius: 12px; opacity: 0; transition: opacity .3s;
+    pointer-events: none; user-select: none; text-shadow: 0 1px 2px #000; }
+  #preview { position: absolute; right: 12px; bottom: 12px; z-index: 25; display: none;
+    width: 150px; border: 1px solid rgba(255,255,255,.25); border-radius: 10px;
+    overflow: hidden; background: #111; }
+  #preview video { width: 100%; display: block; transform: scaleX(-1); opacity: .9; }
+  #preview #dot { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
+    margin: -7px 0 0 -7px; border: 2px solid #0f0; border-radius: 50%;
+    box-shadow: 0 0 6px #0f0; pointer-events: none; }
+  #preview #energy { position: absolute; left: 0; bottom: 0; height: 3px; width: 0%;
+    background: #0f0; }
+</style>
+<script src="../embed-bridge.js"></script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">
+  「tm gyroid 2」 by <a href="https://www.shadertoy.com/user/tubeman" target="_blank">tubeman</a>
+  · <a href="https://www.shadertoy.com/view/tXtyW8" target="_blank">Shadertoy tXtyW8</a>
+  · 拖拽鼠标调整视角 · 按 空格 暂停 · 方向键/摄像头可驾驶 · 原作许可 CC BY-NC-SA 3.0
+</div>
+<div id="topbar"><span id="fps"></span><button id="camBtn">📷 摄像头驾驶</button><button id="toggleBtn">✕ 关闭面板</button></div>
+<div id="panel"></div>
+<div id="pausedTip">已暂停 (空格继续)</div>
+<div id="hud"><div id="score">💫 0</div><div id="eff"></div><div id="near"></div><button id="exitDrive">退出驾驶</button></div>
+<div id="toast"></div>
+<div id="preview"><video id="cam" playsinline muted></video><div id="dot"></div><div id="energy"></div></div>
+
+<script>
+// ============ 着色器：源自 Shadertoy tXtyW8（tubeman, "tm gyroid 2"），
+// ============ 把原作中写死的常量提取为 uniform，并加入驾驶模式与道具渲染。 ============
+const SHADER_SOURCE = `#define PI 3.1415
+
+int m = 0;
+
+mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+mat3 lookAt(vec3 dir) {
+    vec3 up=vec3(0.,1.,0.);
+    vec3 rt=normalize(cross(dir,up));
+    return mat3(rt, cross(rt,dir), dir);
+}
+
+float gyroid(vec3 p) { p *= uScale; return (dot(cos(p), sin(p.zxy)) + 1.) / uScale; }
+
+float map(vec3 p) {
+    float r = 1e5, d;
+
+    d = gyroid(p);
+    if (d<r) { r=d; m=1; }
+
+    d = gyroid(p - vec3(0,0,PI));
+    if (d<r) { r=d; m=2; }
+
+    return r;
+}
+
+float raymarch(vec3 ro, vec3 rd) {
+    float t = 0.;
+    for (int i=0; i<int(uStepsF); i++) {
+        float d = map(ro + rd*t);
+        if (abs(d) < uEps) break;
+        t += d;
+        if (t > uFar) break;
+    }
+    return t;
+}
+
+float getAO(vec3 p, vec3 sn){
+	float occ = 0.;
+    for (float i=0.; i<4.; i++) {
+        float t = i*.08;
+        float d = map(p + sn*t);
+        occ += t-d;
+    }
+    return clamp(1.-occ, 0., 1.);
+}
+
+vec3 getNormal(vec3 p){
+    vec2 e = vec2(0.5773,-0.5773)*0.001;
+    return normalize(e.xyy*map(p+e.xyy) + e.yyx*map(p+e.yyx) + e.yxy*map(p+e.yxy) + e.xxx*map(p+e.xxx));
+}
+
+// 绕灰轴旋转色相（a=0 时原样返回）
+vec3 hueRot(vec3 c, float a) {
+    const vec3 k = vec3(0.57735);
+    float ca = cos(a), sa = sin(a);
+    return c*ca + cross(k, c)*sa + k*dot(k, c)*(1.-ca);
+}
+
+vec3 trace(vec3 ro, vec3 rd) {
+    vec3 C = vec3(0);
+    vec3 throughput = vec3(1);
+
+    for (int bounce = 0; bounce < 2; bounce++) {
+        float d = raymarch(ro, rd);
+        if (d > uFar) { break; }
+
+        // fog
+        float fog = 1. - exp(-uFog*d*d);
+        C += throughput * fog * vec3(0); throughput *= 1. - fog;
+
+        vec3 p = ro + rd*d;
+        vec3 sn = normalize(getNormal(p) + pow(abs(cos(p*uBumpFreq)), vec3(16))*uBumpAmp);
+
+        // lighting
+        vec3 lp = vec3(10.,-10.,-10.+ro.z) ;
+        vec3 ld = normalize(lp - p);
+        float diff = max(0., .5+2.*dot(sn, ld));
+        float diff2 = pow(length(sin(sn*2.)*.5+.5), 2.);
+        float diff3 = max(0., .5+.5*dot(sn, vec2(1,0).yyx));
+
+        float spec = max(0., dot(reflect(-ld, sn), -rd));
+        float fres = 1. - max(0.,dot(-rd, sn));
+        vec3 col = vec3(0), alb = vec3(0);
+
+        float hue = uHueBase + iTime*uHueSpeed;
+        col += hueRot(uLight1, hue) * diff;
+        col += hueRot(uLight2, hue + uHueSpread) * diff2;
+        col += hueRot(uLight3, hue - uHueSpread) * diff3;
+        col += vec3(.3,.25,.25) * pow(spec,4.)*uSpec;
+
+        float freck = dot(cos(p*uFreckScale),vec3(1));
+        if (m==1) { alb = hueRot(uColA, hue + uHueSpread*.5);  alb *= max(.6, step(uFreckThresh, freck)); }
+        if (m==2) { alb = hueRot(uColB, hue - uHueSpread*.5);  alb *= max(.8, step(-uFreckThresh, freck)); }
+        col *= alb;
+
+        col *= mix(1., getAO(p, sn), uAO);
+        C += throughput * col;
+
+        // reflection
+        rd = reflect(rd, sn);
+        ro = p + sn*.01;
+        throughput *=  uReflect * pow(fres, 1.);
+
+    }
+    return C;
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
+    vec2 uv = (fragCoord.xy - iResolution.xy*.5) / iResolution.y;
+    vec2 mo = (iMouse.xy - iResolution.xy*.5) / iResolution.y;
+
+    vec3 ro;
+    vec3 rd = normalize(vec3(uv, -uFov));
+
+    if (uDrive == 1) {
+        // 驾驶模式：相机位置与朝向由 JS（摄像头/键盘）驱动
+        ro = uCamPos;
+        rd.zy = rot(uSteerView.y) * rd.zy;
+        rd.xz = rot(uSteerView.x) * rd.xz;
+    } else {
+        ro = vec3(PI/2.,0, -iTime*uFly);
+        if (iMouse.z > 0.) {
+            rd.zy = rot(mo.y*PI) * rd.zy;
+            rd.xz = rot(-mo.x*PI) * rd.xz;
+        } else {
+            rd.xy = rot(sin(iTime*uSway)) * rd.xy;
+            vec3 ta = vec3(cos(iTime*uSway*2.), sin(iTime*uSway*2.), uTarget);
+            rd = lookAt(normalize(ta)) * rd;
+        }
+    }
+
+    vec3 col = trace(ro, rd);
+
+    // 道具：JS 逐帧做视线检测，w = 类型 + 可见度(小数部分)
+    // 可见 → 亮核心+光晕；被墙挡住 → 只剩暗淡轮廓（信标提示，可分辨不在眼前）
+    for (int i = 0; i < 48; i++) {
+        vec4 it = uItems[i];
+        if (it.w < 0.5) continue;
+        float vis = fract(it.w);
+        float typ = floor(it.w);
+        vec3 toI = it.xyz - ro;
+        float t = dot(toI, rd);
+        if (t > 0.3 && t < uFar) {
+            float d = length(ro + rd*t - it.xyz);
+            vec3 icol = typ < 1.5 ? vec3(.2,1.,.55) : (typ < 2.5 ? vec3(1.,.55,.1) : vec3(1.,.85,.25));
+            float pulse = .75 + .35*sin(iTime*5. + float(i)*1.7);
+            float core = smoothstep(.14, .05, d) * (0.35 + 1.65*vis);
+            float halo = exp(-d*d*22.) * (0.10 + 0.90*vis);
+            col += icol * pulse * (core + halo);
+        }
+    }
+
+    col *= smoothstep(0.,1., uVignette-length(uv*.9));
+    col = pow(col, vec3(uGamma));
+    fragColor = vec4(col, 1.0);
+}`;
+
+// ==================== Shadertoy 兼容运行环境 (WebGL2 / GLSL ES 3.00) ====================
+const VERT_SOURCE = `#version 300 es
+in vec4 aPos;
+void main() { gl_Position = aPos; }`;
+
+const FRAG_HEADER = `#version 300 es
+precision highp float;
+
+uniform vec3      iResolution;
+uniform float     iTime;
+uniform vec4      iMouse;
+
+// ---- 可调参数（默认值 = 原作常量）----
+uniform float uFly;        // 飞行速度 0.5
+uniform float uSway;       // 镜头摆动 0.2
+uniform float uTarget;     // 摆动目标偏移 4
+uniform float uFov;        // 视野广度 0.5
+uniform float uScale;      // 陀螺体尺度 1
+uniform float uFar;        // 远裁剪 30
+uniform float uStepsF;     // 步进次数 150
+uniform float uEps;        // 命中精度 0.001
+uniform float uBumpFreq;   // 凹凸频率 64
+uniform float uBumpAmp;    // 凹凸强度 0.1
+uniform float uFreckScale; // 斑点密度 23
+uniform float uFreckThresh;// 斑点阈值 2.5
+uniform float uSpec;       // 高光强度 8
+uniform float uReflect;    // 反射率 0.9
+uniform float uAO;         // 环境光遮蔽 1
+uniform float uFog;        // 雾浓度 0.008
+uniform float uHueSpeed;   // 色相循环速度 0
+uniform float uHueBase;    // 色相偏移 0
+uniform float uHueSpread;  // 色彩相位分离 0
+uniform vec3  uColA, uColB, uLight1, uLight2, uLight3;
+uniform float uVignette;   // 暗角 1.2
+uniform float uGamma;      // 伽马 0.4545
+// ---- 驾驶模式 ----
+uniform int   uDrive;      // 1 = 摄像头/键盘驾驶
+uniform vec3  uCamPos;     // 驾驶相机位置
+uniform vec2  uSteerView;  // 驾驶视角角 (yaw, pitch)
+uniform vec4  uItems[48];  // 道具 xyz + 类型+可见度 w（w<0.5 表示空位）
+
+out vec4 out_FragColor;
+`;
+
+const FRAG_FOOTER = `
+void main() {
+    vec4 fragColor = vec4(0.0);
+    mainImage(fragColor, gl_FragCoord.xy);
+    out_FragColor = fragColor;
+}
+`;
+
+// ==================== 参数配置 ====================
+const PARAMS = [
+  { group: "镜头 & 动画", items: [
+    { k: "uFly",         label: "飞行速度",   min: 0,    max: 2,    step: 0.01,  v: 0.5 },
+    { k: "uSway",        label: "镜头摆动",   min: 0,    max: 1,    step: 0.01,  v: 0.2 },
+    { k: "uTarget",      label: "目标偏移",   min: -4,   max: 10,   step: 0.1,   v: 4 },
+    { k: "uFov",         label: "视野广度",   min: 0.2,  max: 1.5,  step: 0.01,  v: 0.5 },
+  ]},
+  { group: "几何 & 性能", items: [
+    { k: "uScale",       label: "陀螺体尺度", min: 0.3,  max: 3,    step: 0.01,  v: 1 },
+    { k: "uFar",         label: "远裁剪距离", min: 5,    max: 60,   step: 1,     v: 30 },
+    { k: "uStepsF",      label: "步进次数",   min: 30,   max: 300,  step: 5,     v: 150 },
+    { k: "uEps",         label: "命中精度",   min: 0.0002, max: 0.005, step: 0.0001, v: 0.001 },
+    { k: "uResScale",    label: "渲染分辨率", min: 0.25, max: 2,    step: 0.05,  v: 1, js: true },
+  ]},
+  { group: "表面 & 细节", items: [
+    { k: "uBumpFreq",    label: "凹凸频率",   min: 2,    max: 128,  step: 1,     v: 64 },
+    { k: "uBumpAmp",     label: "凹凸强度",   min: 0,    max: 0.5,  step: 0.005, v: 0.1 },
+    { k: "uFreckScale",  label: "斑点密度",   min: 0,    max: 60,   step: 0.5,   v: 23 },
+    { k: "uFreckThresh", label: "斑点阈值",   min: -4,   max: 4,    step: 0.05,  v: 2.5 },
+  ]},
+  { group: "光照 & 反射", items: [
+    { k: "uSpec",        label: "高光强度",   min: 0,    max: 24,   step: 0.1,   v: 8 },
+    { k: "uReflect",     label: "反射率",     min: 0,    max: 1,    step: 0.01,  v: 0.9 },
+    { k: "uAO",          label: "环境光遮蔽", min: 0,    max: 1,    step: 0.01,  v: 1 },
+    { k: "uFog",         label: "雾浓度",     min: 0,    max: 0.03, step: 0.0005, v: 0.008 },
+  ]},
+  { group: "驾驶 & 摄像头", items: [
+    { k: "uDriveSpeed",  label: "驾驶速度",     min: 0.5,  max: 6,    step: 0.1,  v: 2.2, js: true },
+    { k: "uTurnRate",    label: "转向速率",     min: 0.5,  max: 3,    step: 0.05, v: 1.4, js: true },
+    { k: "uCamGain",     label: "摄像头灵敏度", min: 0.5,  max: 3,    step: 0.05, v: 1.4, js: true },
+    { k: "uPickR",       label: "拾取半径",     min: 0.15, max: 0.8,  step: 0.01, v: 0.45, js: true },
+    { k: "uMagnetR",     label: "磁吸半径",     min: 0,    max: 5,    step: 0.1,  v: 2.2, js: true },
+    { k: "uItemCount",   label: "道具数量",     min: 4,    max: 48,   step: 1,    v: 32, js: true },
+  ]},
+  { group: "动态色彩", items: [
+    { k: "uHueSpeed",  label: "循环速度", min: 0,    max: 1.5,  step: 0.01, v: 0 },
+    { k: "uHueBase",   label: "色相偏移", min: 0,    max: 6.28, step: 0.01, v: 0 },
+    { k: "uHueSpread", label: "色彩分离", min: 0,    max: 3.14, step: 0.01, v: 0 },
+  ]},
+  { group: "颜色 & 后期", items: [
+    { k: "uColA",        label: "材质 A（蓝）", color: "#331ae6" },
+    { k: "uColB",        label: "材质 B（橙）", color: "#994d1a" },
+    { k: "uLight1",      label: "主光（蓝）",  color: "#6699e6" },
+    { k: "uLight2",      label: "光 2（红）",  color: "#801a1a" },
+    { k: "uLight3",      label: "光 3（粉）",  color: "#e61966" },
+    { k: "uVignette",    label: "暗角",       min: 0.5,  max: 3,    step: 0.01,  v: 1.2 },
+    { k: "uGamma",       label: "伽马",       min: 0.3,  max: 1,     step: 0.005, v: 0.4545 },
+  ]},
+];
+
+const P = {};  // key -> { v, js, color }
+for (const g of PARAMS) for (const it of g.items)
+  P[it.k] = { v: it.color ?? it.v, js: !!it.js, color: it.color };
+
+// ==================== WebGL 初始化 ====================
+const canvas = document.getElementById("c");
+const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
+if (!gl) {
+  document.body.innerHTML = "<p style='color:#f88;font:16px sans-serif;padding:2em'>此浏览器不支持 WebGL2，无法运行。</p>";
+  throw new Error("no webgl2");
+}
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(s);
+    console.error(log);
+    document.body.insertAdjacentHTML("beforeend",
+      "<pre style='color:#f88;white-space:pre-wrap;padding:1em;font:12px monospace'>" + log + "</pre>");
+    throw new Error(log);
+  }
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT_SOURCE));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG_HEADER + SHADER_SOURCE + FRAG_FOOTER));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+  throw new Error(gl.getProgramInfoLog(prog));
+}
+gl.useProgram(prog);
+
+// 全屏三角形
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, "aPos");
+gl.enableVertexAttribArray(loc);
+gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+for (const n of ["iResolution", "iTime", "iMouse", "uDrive", "uCamPos", "uSteerView", "uItems", ...Object.keys(P)])
+  U[n] = gl.getUniformLocation(prog, n);
+
+function hexToRGB(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+function uploadUniform(k) {
+  const p = P[k];
+  if (p.js) return;                       // JS 侧参数（驾驶/分辨率）不进着色器
+  if (p.color) gl.uniform3fv(U[k], hexToRGB(p.color));
+  else gl.uniform1f(U[k], p.v);
+}
+
+// ==================== iMouse 语义（与 Shadertoy 一致）====================
+const mouse = { x: 0, y: 0, z: 0, w: 0, down: false };
+function setMouse(e) {
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  mouse.x = (e.clientX - r.left) * dpr;
+  mouse.w = (e.clientY - r.top) * dpr;
+  mouse.y = canvas.height - mouse.w; // GL 的 y 轴向上
+}
+canvas.addEventListener("mousedown", e => { setMouse(e); mouse.down = true; mouse.z = mouse.x; });
+window.addEventListener("mouseup", () => { mouse.down = false; mouse.z = -Math.abs(mouse.z); });
+window.addEventListener("mousemove", e => {
+  if (mouse.down) {
+    const py = mouse.y;
+    setMouse(e);
+    mouse.z = mouse.x;
+    mouse.w = py;
+  }
+});
+canvas.addEventListener("touchstart", e => { setMouse(e.touches[0]); mouse.down = true; mouse.z = mouse.x; e.preventDefault(); }, { passive: false });
+canvas.addEventListener("touchmove", e => { if (mouse.down) { const py = mouse.y; setMouse(e.touches[0]); mouse.z = mouse.x; mouse.w = py; } e.preventDefault(); }, { passive: false });
+window.addEventListener("touchend", () => { mouse.down = false; mouse.z = -Math.abs(mouse.z); });
+
+// ==================== 暂停 / 时间控制 ====================
+let paused = false, tAcc = 0, lastT = 0, frame = 0;
+window.addEventListener("keydown", e => {
+  if (document.activeElement && ["INPUT", "TEXTAREA", "BUTTON"].includes(document.activeElement.tagName)) return;
+  if (e.code === "Space") { paused = !paused; document.getElementById("pausedTip").style.display = paused ? "block" : "none"; e.preventDefault(); }
+  if (drive.on && e.code.startsWith("Arrow")) {
+    if (e.code === "ArrowLeft") drive.keys.left = true;
+    if (e.code === "ArrowRight") drive.keys.right = true;
+    if (e.code === "ArrowUp") drive.keys.up = true;
+    if (e.code === "ArrowDown") drive.keys.down = true;
+    e.preventDefault();
+  }
+});
+window.addEventListener("keyup", e => {
+  if (e.code === "ArrowLeft") drive.keys.left = false;
+  if (e.code === "ArrowRight") drive.keys.right = false;
+  if (e.code === "ArrowUp") drive.keys.up = false;
+  if (e.code === "ArrowDown") drive.keys.down = false;
+});
+
+// ==================== 自适应分辨率（含渲染倍率）====================
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2) * P.uResScale.v;
+  const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+    gl.viewport(0, 0, w, h);
+  }
+}
+window.addEventListener("resize", resize);
+
+// ==================== 参数面板 UI ====================
+const panel = document.getElementById("panel");
+const inputs = {};   // key -> input 元素（用于重置）
+function fmt(v, step) {
+  return step >= 1 ? v.toFixed(0) : step >= 0.01 ? v.toFixed(2) : v.toFixed(4);
+}
+for (const g of PARAMS) {
+  const h = document.createElement("h3");
+  h.textContent = g.group;
+  panel.appendChild(h);
+  for (const it of g.items) {
+    if (it.color) {
+      const row = document.createElement("div");
+      row.className = "crow";
+      row.innerHTML = `<span>${it.label}</span>`;
+      const inp = document.createElement("input");
+      inp.type = "color"; inp.value = it.color;
+      inp.addEventListener("input", () => {
+        P[it.k].color = inp.value; uploadUniform(it.k);
+      });
+      row.appendChild(inp);
+      panel.appendChild(row);
+      inputs[it.k] = inp;
+    } else {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<div class="lab"><span>${it.label}</span><span class="val">${fmt(it.v, it.step)}</span></div>`;
+      const inp = document.createElement("input");
+      inp.type = "range"; inp.min = it.min; inp.max = it.max; inp.step = it.step; inp.value = it.v;
+      const valEl = row.querySelector(".val");
+      inp.addEventListener("input", () => {
+        P[it.k].v = parseFloat(inp.value);
+        valEl.textContent = fmt(P[it.k].v, it.step);
+        uploadUniform(it.k);
+        if (P[it.k].js) resize();     // 渲染倍率立即生效
+      });
+      row.appendChild(inp);
+      panel.appendChild(row);
+      inputs[it.k] = inp;
+    }
+  }
+}
+const btns = document.createElement("div");
+btns.id = "btns";
+btns.innerHTML = `<button id="resetBtn">恢复默认</button>`;
+panel.appendChild(btns);
+btns.querySelector("#resetBtn").addEventListener("click", () => {
+  for (const g of PARAMS) for (const it of g.items) {
+    P[it.k] = { v: it.color ?? it.v, js: !!it.js, color: it.color };
+    const inp = inputs[it.k];
+    if (inp.type === "color") inp.value = it.color;
+    else { inp.value = it.v; inp.parentElement.querySelector(".val").textContent = fmt(it.v, it.step); }
+    uploadUniform(it.k);
+  }
+  resize();
+});
+
+// 面板开合
+const toggleBtn = document.getElementById("toggleBtn");
+toggleBtn.addEventListener("click", () => {
+  const open = panel.style.display !== "none";
+  panel.style.display = open ? "none" : "block";
+  toggleBtn.textContent = open ? "⚙ 参数面板" : "✕ 关闭面板";
+});
+
+// ==================== 驾驶模式：状态 ====================
+const drive = {
+  on: false, hasCam: false,
+  steer: { x: 0, y: 0 },            // 平滑后的转向输入 [-1,1]（x 右正，y 上正）
+  keys: { left: false, right: false, up: false, down: false },
+  cam: { x: Math.PI / 2, y: 0, z: 0, a1: 0, a2: 0 }, // a1=yaw a2=pitch
+  boost: { mult: 1, until: 0 },
+  score: 0, energy: 0, lastMotion: 0,
+  items: [],                               // {x,y,z,type,vis}
+};
+window.__drive = drive;              // 调试/测试入口
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const deadzone = v => Math.abs(v) < 0.08 ? 0 : v;
+
+// ---- 与着色器完全一致的 SDF（含 uScale）----
+function sdfJS(x, y, z) {
+  const s = P.uScale.v, is = 1 / s;
+  const g = (px, py, pz) => (Math.cos(px * s) * Math.sin(pz * s) +
+                             Math.cos(py * s) * Math.sin(px * s) +
+                             Math.cos(pz * s) * Math.sin(py * s) + 1) * is;
+  return Math.min(g(x, y, z), g(x, y, z - Math.PI));
+}
+function sdfGrad(p) {
+  const e = 0.025;
+  const gx = sdfJS(p.x + e, p.y, p.z) - sdfJS(p.x - e, p.y, p.z);
+  const gy = sdfJS(p.x, p.y + e, p.z) - sdfJS(p.x, p.y - e, p.z);
+  const gz = sdfJS(p.x, p.y, p.z + e) - sdfJS(p.x, p.y, p.z - e);
+  const l = Math.hypot(gx, gy, gz) || 1;
+  return { x: gx / l, y: gy / l, z: gz / l };
+}
+function forwardVec() {
+  const { a1, a2 } = drive.cam;
+  return {
+    x: -Math.sin(a1) * Math.cos(a2),
+    y: Math.sin(a2),
+    z: -Math.cos(a1) * Math.cos(a2),
+  };
+}
+
+// ==================== 驾驶模式：摄像头运动检测 ====================
+const video = document.getElementById("cam");
+const previewEl = document.getElementById("preview");
+const dotEl = document.getElementById("dot");
+const energyEl = document.getElementById("energy");
+const MW = 64, MH = 48;
+const mCan = document.createElement("canvas");
+mCan.width = MW; mCan.height = MH;
+const mCtx = mCan.getContext("2d", { willReadFrequently: true });
+let prevLum = null, lastMotionT = 0;
+
+function processMotion(now) {
+  if (!drive.hasCam || video.readyState < 2) return;
+  if (now - lastMotionT < 66) return;   // ~15fps 检测足够
+  lastMotionT = now;
+  // 镜像绘制（自拍视角，动右手 = 画面右侧亮）
+  mCtx.save();
+  mCtx.translate(MW, 0); mCtx.scale(-1, 1);
+  mCtx.drawImage(video, 0, 0, MW, MH);
+  mCtx.restore();
+  const d = mCtx.getImageData(0, 0, MW, MH).data;
+  const lum = new Float32Array(MW * MH);
+  for (let i = 0; i < MW * MH; i++) {
+    const j = i * 4;
+    lum[i] = d[j] * 0.3 + d[j + 1] * 0.5 + d[j + 2] * 0.2;
+  }
+  if (prevLum) {
+    let sx = 0, sy = 0, sw = 0;
+    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+      const i = y * MW + x;
+      const df = lum[i] - prevLum[i];
+      if (df > 24) { sw += df; sx += x * df; sy += y * df; }
+    }
+    drive.energy = clamp(sw / (MW * MH * 40), 0, 1);
+    if (sw > 60) {
+      const nx = deadzone(clamp(((sx / sw) / MW * 2 - 1) * P.uCamGain.v, -1, 1));
+      const ny = deadzone(clamp((1 - (sy / sw) / MH * 2) * P.uCamGain.v, -1, 1));
+      drive.steer.x += (nx - drive.steer.x) * 0.35;
+      drive.steer.y += (ny - drive.steer.y) * 0.35;
+      drive.lastMotion = now;
+    }
+    // 人静止时转向输入衰减为零（航向保持，继续朝最后面对的孔洞前进）
+    if (now - drive.lastMotion > 400) { drive.steer.x *= 0.9; drive.steer.y *= 0.9; drive.energy *= 0.8; }
+  }
+  prevLum = lum;
+}
+
+// ==================== 驾驶模式：道具 ====================
+const toastEl = document.getElementById("toast");
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.style.opacity = 0, 2200);
+}
+const scoreEl = document.getElementById("score");
+const effEl = document.getElementById("eff");
+const nearEl = document.getElementById("near");
+
+function spawnLatticeItem(f) {
+  // 在相机前方周围的抖动立体格子上取点，再吸附到最近的孔洞中心
+  const c = { x: drive.cam.x + f.x * 8, y: drive.cam.y + f.y * 8, z: drive.cam.z + f.z * 8 };
+  const ix = Math.floor(Math.random() * 5) - 2;
+  const iy = Math.floor(Math.random() * 5) - 2;
+  const iz = Math.floor(Math.random() * 5) - 2;
+  const p = {
+    x: c.x + ix * 7 + (Math.random() - 0.5) * 3,
+    y: c.y + iy * 7 + (Math.random() - 0.5) * 3,
+    z: c.z + iz * 7 + (Math.random() - 0.5) * 3,
+  };
+  // 梯度上升：吸附到孔洞中心（两个迷宫谁近进谁，天然覆盖所有孔洞）
+  for (let i = 0; i < 6; i++) {
+    const g = sdfGrad(p);
+    p.x += g.x * 0.18; p.y += g.y * 0.18; p.z += g.z * 0.18;
+  }
+  if (sdfJS(p.x, p.y, p.z) < 0.25) return false;        // 没吸进通道，放弃该点
+  // 不贴脸 + 与现有道具保持间距（保证互相错开、分布均匀）
+  const dcam = Math.hypot(p.x - drive.cam.x, p.y - drive.cam.y, p.z - drive.cam.z);
+  if (dcam < 3.5) return false;
+  for (const it of drive.items) {
+    if (Math.hypot(it.x - p.x, it.y - p.y, it.z - p.z) < 4.5) return false;
+  }
+  const type = 1 + Math.floor(Math.random() * 3); // 1加速 2减速 3星
+  drive.items.push({ x: p.x, y: p.y, z: p.z, type, vis: 0.5 });
+  return true;
+}
+
+function collect(it) {
+  if (it.type === 1) { drive.boost = { mult: 1.7, until: performance.now() + 5000 }; toast("🚀 拾取加速器！速度 ×1.7（5 秒）"); }
+  else if (it.type === 2) { drive.boost = { mult: 0.45, until: performance.now() + 5000 }; toast("🐢 拾取减速器！速度 ×0.45（5 秒）"); }
+  else { drive.score++; scoreEl.textContent = "💫 " + drive.score; toast("⭐ 能量星 +1"); }
+}
+
+// 视线检测：从相机到道具做 SDF 射线步进，判断中间有没有墙
+function lineOfSight(it) {
+  const dx = it.x - drive.cam.x, dy = it.y - drive.cam.y, dz = it.z - drive.cam.z;
+  const dist = Math.hypot(dx, dy, dz);
+  if (dist < 0.4) return 1;
+  const ux = dx / dist, uy = dy / dist, uz = dz / dist;
+  let t = 0.2;
+  for (let i = 0; i < 40; i++) {
+    const d = sdfJS(drive.cam.x + ux * t, drive.cam.y + uy * t, drive.cam.z + uz * t);
+    if (d < 0.025) return 0;            // 中途撞墙 → 被挡住
+    t += Math.max(d * 0.8, 0.06);
+    if (t >= dist - 0.15) return 1;     // 顺利到达道具
+  }
+  return 0;
+}
+
+function updateItems(now, f, dt) {
+  const R = P.uPickR.v, MR = P.uMagnetR.v;
+  let nearD = Infinity;
+  for (const it of drive.items) {
+    const dx = it.x - drive.cam.x, dy = it.y - drive.cam.y, dz = it.z - drive.cam.z;
+    const d = Math.hypot(dx, dy, dz);
+    // 可见度平滑过渡（射线检测有二值抖动，做低通）
+    it.vis = (it.vis ?? 0.5) + (lineOfSight(it) - (it.vis ?? 0.5)) * 0.12;
+    if (it.vis > 0.4 && d < nearD) nearD = d;
+    if (d < R) { collect(it); it.dead = true; continue; }
+    // 磁吸：看得见且进入磁吸范围 → 自动吸向相机，飞掠而过也算拾取
+    if (it.vis > 0.5 && d < MR && d > 0.01) {
+      const pull = (2.5 + 3.5 * (1 - d / MR)) * dt;
+      it.x -= dx / d * pull;
+      it.y -= dy / d * pull;
+      it.z -= dz / d * pull;
+    }
+  }
+  drive.items = drive.items.filter(i => !i.dead);
+  // 空间分布：清理离相机太远的道具，然后在周围立体空间均匀补充
+  drive.items = drive.items.filter(it =>
+    Math.hypot(it.x - drive.cam.x, it.y - drive.cam.y, it.z - drive.cam.z) < 30);
+  refillItems(f);
+  nearEl.textContent = isFinite(nearD) ? "🎯 最近道具 " + nearD.toFixed(1) : "";
+}
+
+// 立体网格补充：道具均匀散布在相机周围的所有孔洞里（不只沿飞行路径）
+function refillItems(f) {
+  const target = Math.min(Math.round(P.uItemCount.v), 48);
+  if (drive.items.length >= target) return;
+  for (let tries = 0; tries < 60 && drive.items.length < target; tries++) {
+    spawnLatticeItem(f);
+  }
+}
+
+// ==================== 驾驶模式：每帧更新 ====================
+function updateDrive(dt, now) {
+  // 键盘输入优先（无摄像头时也能玩/测试）
+  const kx = (drive.keys.right ? 1 : 0) - (drive.keys.left ? 1 : 0);
+  const ky = (drive.keys.up ? 1 : 0) - (drive.keys.down ? 1 : 0);
+  let sx = kx || ky ? kx : drive.steer.x;
+  let sy = kx || ky ? ky : drive.steer.y;
+  sx = clamp(sx, -1, 1); sy = clamp(sy, -1, 1);
+
+  // 积分式转向（像开飞机）：人移动时持续改变航向，可一直转到对准任意孔洞；
+  // 人停止移动时输入归零、航向保持——前进方向停留在最后面对的那个孔洞上
+  const rate = P.uTurnRate.v;
+  drive.cam.a1 += -sx * rate * dt;
+  drive.cam.a2 +=  sy * rate * dt;
+  drive.cam.a2 = clamp(drive.cam.a2, -1.25, 1.25);  // 俯仰限位防翻转
+  if (drive.cam.a1 > 25 || drive.cam.a1 < -25) drive.cam.a1 %= Math.PI * 2;
+
+  // 沿视线方向前进（靠近墙壁时减速）
+  let spd = P.uDriveSpeed.v * (now < drive.boost.until ? drive.boost.mult : 1);
+  const margin = 0.42 / P.uScale.v;
+  const d0 = sdfJS(drive.cam.x, drive.cam.y, drive.cam.z);
+  if (d0 < margin) spd *= Math.max(0.12, d0 / margin);
+  const f = forwardVec();
+  drive.cam.x += f.x * spd * dt;
+  drive.cam.y += f.y * spd * dt;
+  drive.cam.z += f.z * spd * dt;
+
+  // 避墙 + 巡中：常态下沿梯度向孔洞中心轻微吸附（钻洞更顺滑），
+  // 贴墙时梯度推力变强把相机推回通道
+  const d1 = sdfJS(drive.cam.x, drive.cam.y, drive.cam.z);
+  const g = sdfGrad(drive.cam);
+  let push = 0.35;                                   // 常态巡中吸附
+  if (d1 < margin) push += (margin - d1) * 10;       // 贴墙强推
+  drive.cam.x += g.x * push * dt;
+  drive.cam.y += g.y * push * dt;
+  drive.cam.z += g.z * push * dt;
+  // 硬保护：万一穿进墙里，直接推出来
+  const d2 = sdfJS(drive.cam.x, drive.cam.y, drive.cam.z);
+  if (d2 < 0.03) {
+    const g = sdfGrad(drive.cam);
+    drive.cam.x += g.x * (0.1 - d2) * 2;
+    drive.cam.y += g.y * (0.1 - d2) * 2;
+    drive.cam.z += g.z * (0.1 - d2) * 2;
+  }
+
+  updateItems(now, f, dt);
+
+  // HUD
+  effEl.textContent = now < drive.boost.until
+    ? (drive.boost.mult > 1 ? "🚀 加速中" : "🐢 减速中") + " ×" + drive.boost.mult + " · " + ((drive.boost.until - now) / 1000).toFixed(1) + "s"
+    : "";
+  dotEl.style.left = (50 + drive.steer.x * 42) + "%";
+  dotEl.style.top = (50 - drive.steer.y * 42) + "%";
+  energyEl.style.width = (drive.energy * 100) + "%";
+}
+
+// ==================== 驾驶模式：开关 ====================
+const camBtn = document.getElementById("camBtn");
+const hudEl = document.getElementById("hud");
+async function enterDrive() {
+  drive.on = true;
+  // 从当前自动飞行的位置无缝接管
+  drive.cam.x = Math.PI / 2; drive.cam.y = 0;
+  drive.cam.z = -tAcc * P.uFly.v;
+  drive.cam.a1 = 0; drive.cam.a2 = 0;
+  drive.steer.x = drive.steer.y = 0;
+  drive.items.length = 0;
+  scoreEl.textContent = "💫 " + drive.score;
+  hudEl.style.display = "block";
+  camBtn.textContent = "📹 驾驶中…";
+  toast("🎮 驾驶模式：移动身体或 方向键 转向 · 发亮道具可拾取（会自动吸附），暗淡轮廓=在墙后");
+  if (!navigator.mediaDevices?.getUserMedia) {
+    toast("⚠️ 此环境不支持摄像头，可用 ← ↑ ↓ → 方向键驾驶");
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 320, height: 240, facingMode: "user" }, audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+    drive.hasCam = true;
+    previewEl.style.display = "block";
+    toast("📷 摄像头已启用：上下左右移动身体即可转向驾驶！");
+  } catch (e) {
+    toast("⚠️ 摄像头不可用（" + e.name + "），已改用 ← ↑ ↓ → 方向键驾驶");
+  }
+}
+function exitDrive() {
+  drive.on = false;
+  if (drive.hasCam) {
+    const s = video.srcObject;
+    if (s) s.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+  }
+  drive.hasCam = false;
+  drive.steer.x = drive.steer.y = 0;
+  hudEl.style.display = "none";
+  previewEl.style.display = "none";
+  camBtn.textContent = "📷 摄像头驾驶";
+}
+camBtn.addEventListener("click", () => drive.on ? exitDrive() : enterDrive());
+document.getElementById("exitDrive").addEventListener("click", exitDrive);
+
+// ==================== 主循环 ====================
+const fpsEl = document.getElementById("fps");
+let fpsCount = 0, fpsT = performance.now();
+const itemArr = new Float32Array(48 * 4);
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((now - lastT) / 1000, 0.1);
+  lastT = now;
+  if (!paused) { tAcc += dt; frame++; }
+
+  if (drive.on && !paused) { processMotion(now); updateDrive(dt, now); }
+
+  resize();
+  gl.uniform3f(U.iResolution, canvas.width, canvas.height, 1);
+  gl.uniform1f(U.iTime, tAcc);
+  gl.uniform4f(U.iMouse, mouse.x, mouse.y, mouse.z, mouse.w);
+  gl.uniform1i(U.uDrive, drive.on ? 1 : 0);
+  gl.uniform3f(U.uCamPos, drive.cam.x, drive.cam.y, drive.cam.z);
+  gl.uniform2f(U.uSteerView, drive.cam.a1, drive.cam.a2);
+  itemArr.fill(0);
+  drive.items.slice(0, 48).forEach((it, i) => {
+    itemArr[i * 4] = it.x; itemArr[i * 4 + 1] = it.y; itemArr[i * 4 + 2] = it.z;
+    itemArr[i * 4 + 3] = it.type + Math.min(it.vis ?? 0.5, 0.95); // w = 类型 + 可见度小数
+  });
+  gl.uniform4fv(U.uItems, itemArr);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  fpsCount++;
+  if (now - fpsT > 1000) {
+    fpsEl.textContent = fpsCount + " fps · " + canvas.width + "×" + canvas.height;
+    fpsCount = 0; fpsT = now;
+  }
+}
+resize();
+for (const k of Object.keys(P)) uploadUniform(k);
+requestAnimationFrame(t => { lastT = t; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>

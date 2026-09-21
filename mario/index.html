@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>逃跑之后变安详 — Mario World 1-1 改编版</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  canvas{display:block;width:100vw;height:100vh;image-rendering:pixelated}
+  #hint{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+        color:#fff;font:16px/1.6 monospace;background:rgba(0,0,0,.55);cursor:pointer;
+        flex-direction:column;gap:8px;text-align:center}
+  #hint small{opacity:.7}
+  #panel{position:fixed;left:10px;top:10px;display:flex;flex-direction:column;gap:6px;
+         font:12px monospace;color:#fff;background:rgba(0,0,0,.6);padding:10px;border:2px solid #fff;
+         image-rendering:pixelated;z-index:10}
+  #panel button{font:12px monospace;background:#e52521;color:#fff;border:2px solid #fff;
+                padding:4px 8px;cursor:pointer}
+  #panel button:hover{background:#fff;color:#000}
+  #panel .title{font-weight:bold;margin-bottom:2px}
+</style>
+<script src="../embed-bridge.js"></script>
+</head>
+<body>
+<canvas id="glcanvas"></canvas>
+<div id="hint">▶ 点击开始(含 8-bit 背景音乐)<small>小星星变奏曲 Var.2 → Var.11 · 循环播放</small></div>
+<div id="panel">
+  <div class="title">自定义贴图(自动像素化)</div>
+  <button id="upSky">🖼 替换天空背景</button>
+  <button id="upYoshi">🦖 替换耀西</button>
+  <button id="upMario">🍄 替换马里奥</button>
+  <button id="upGoomba">👻 替换蘑菇兵</button>
+  <button id="resetAll">↩ 恢复默认</button>
+  <div class="title" style="margin-top:6px">耀西数量 <span id="densVal">100%</span></div>
+  <input type="range" id="dens" min="10" max="225" value="100" style="width:100%">
+</div>
+<input type="file" id="filePick" accept="image/*" hidden>
+<script>
+const LOOP = 50.0;   // 整个画面 + 音乐的循环周期(秒)
+const canvas = document.getElementById('glcanvas');
+const gl = canvas.getContext('webgl', {antialias:false});
+
+const VERT = `
+attribute vec2 aPos;
+void main(){ gl_Position = vec4(aPos,0.0,1.0); }
+`;
+
+function compile(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+
+// ============ 8-bit 音乐(小星星变奏曲) ============
+const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+// 音名: C4=60
+const N = {C4:60,D4:62,E4:64,F4:65,G4:67,A4:69,B4:71,C5:72,G3:55,F3:53,E3:52,D3:50,C3:48};
+// 主题旋律(小星星): C C G G A A G- F F E E D D C-(两遍省略,一遍 24 拍)
+const THEME = [N.C4,N.C4,N.G4,N.G4,N.A4,N.A4,N.G4,N.G4,
+               N.F4,N.F4,N.E4,N.E4,N.D4,N.D4,N.C4,N.C4];
+// Var.2 和声根音(每拍一个)
+const VAR2_ROOTS = [N.C3,N.C3,N.F3,N.C3,N.F3,N.C3,N.G3,N.C3,
+                    N.C3,N.C3,N.F3,N.C3,N.G3,N.C3,N.G3,N.C3];
+
+function playNote(ac, t, freq, dur, type, vol){
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur); // 8bit 风格短促衰减
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+
+// 生成一个循环(50s)内所有音符的绝对时间表(相对循环起点)
+function buildScore(){
+  const notes = [];
+  // ---- Var.2(0 - 25s):快板,十六分音符琶音(右手)+ 低音(左手)----
+  const q = 0.72;                    // 一拍时长
+  for (let beat = 0; beat < 32; beat++){
+    const root  = VAR2_ROOTS[beat % 16];
+    const chord = [0, 4, 7, 12, 7, 4];   // 根 三 五 八 五 三
+    const base  = root + 24;             // 上移两个八度作旋律声部
+    const t0 = 2.0 + beat * q;           // 2s 开始(跳过片头黑屏)
+    if (t0 > 24.5) break;
+    for (let s = 0; s < 6; s++){
+      const t = t0 + s * (q / 6);
+      if (t < 24.5){
+        const isTop = (s === 0);
+        notes.push([t, midi(base + chord[s]), q/6*1.1, 'square', isTop ? 0.10 : 0.055]);
+      }
+    }
+    notes.push([t0, midi(root), q*0.9, 'square', 0.06]);          // 低音
+    if (beat % 4 === 0) notes.push([t0, midi(root+7), q*0.9, 'triangle', 0.04]);
+  }
+  // ---- Var.11(25 - 50s):柔板,三角波慢旋律 + 和弦垫 ----
+  const q2 = 0.9;
+  const theme11 = THEME.concat(THEME.slice(0, 10));  // 拉长到 ~23s
+  for (let i = 0; i < theme11.length; i++){
+    const t = 25.5 + i * q2;
+    if (t > 49.5) break;
+    notes.push([t, midi(theme11[i]), q2*0.95, 'triangle', 0.13]);
+    if (i % 4 === 0){  // 慢和弦垫
+      const root = VAR2_ROOTS[(i/2|0) % 16] + 12;
+      notes.push([t, midi(root), q2*3.6, 'square', 0.028]);
+      notes.push([t, midi(root+7), q2*3.6, 'square', 0.022]);
+    }
+  }
+  return notes;
+}
+const SCORE = buildScore();
+
+let audioRunning = false;
+function startAudio(visualT0){
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  audioRunning = true;
+  window.__audioState = { ctx: ac, scheduled: 0 };
+  // 以画面时钟(__visT)为基准排程:暂停时两边时钟一起冻结,天然同步
+  let scheduledUpTo = -1;
+  (function audioTick(){
+    const visT = window.__visT();
+    if (!window.__paused()){
+      // 当前循环边界与下一循环边界
+      for (const B of [ Math.floor(visT / LOOP) * LOOP, (Math.floor(visT / LOOP) + 1) * LOOP ]){
+        if (B <= scheduledUpTo) continue;
+        if (B > 0 && visT < B - 1.0) continue;          // 下一轮提前 1s 排
+        const acNow = ac.currentTime;
+        let n = 0;
+        for (const [t, f, d, ty, v] of SCORE){
+          const when = acNow + (B + t - visT) + 0.05;
+          if (when < acNow + 0.02) continue;             // 已过时的音符跳过
+          playNote(ac, when, f, d, ty, v);
+          n++;
+        }
+        window.__audioState.scheduled += n;
+        scheduledUpTo = B;
+      }
+    }
+    requestAnimationFrame(audioTick);
+  })();
+}
+
+// ============ 渲染 ============
+async function main(){
+  const fragSrc = await (await fetch('mario_sleep.frag')).text();
+
+  const prelude = `
+precision highp float;
+uniform vec3 iResolution;
+uniform float iTime;
+uniform vec4 iMouse;
+uniform float iChannelTime[4];
+uniform vec3 iChannelResolution[4];
+uniform vec4 iDate;
+uniform float iSampleRate;
+uniform sampler2D iChannel0;
+uniform sampler2D iChannel1;
+uniform sampler2D iChannel2;
+uniform sampler2D iChannel3;
+`;
+  const epilogue = `
+void main(){ mainImage(gl_FragColor, gl_FragCoord.xy); }
+`;
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, prelude + fragSrc + epilogue));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'aPos');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const uRes  = gl.getUniformLocation(prog, 'iResolution');
+  const uTime = gl.getUniformLocation(prog, 'iTime');
+
+  // ---------- 自定义贴图:通道与启用开关 ----------
+  const CH = [0,1,2,3].map(i => gl.getUniformLocation(prog, 'iChannel'+i));
+  const uHas = {
+    sky:   gl.getUniformLocation(prog, 'uHasSky'),
+    yoshi: gl.getUniformLocation(prog, 'uHasYoshi'),
+    mario: gl.getUniformLocation(prog, 'uHasMario'),
+    goomba:gl.getUniformLocation(prog, 'uHasGoomba'),
+  };
+  // 每通道一个 1x1 默认纹理
+  const texs = CH.map(() => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  });
+  gl.uniform1i(CH[0], 0); gl.uniform1i(CH[1], 1); gl.uniform1i(CH[2], 2); gl.uniform1i(CH[3], 3);
+  for (const k in uHas) gl.uniform1f(uHas[k], 0);
+  const uYoshiDensity = gl.getUniformLocation(prog, 'uYoshiDensity');
+  gl.uniform1f(uYoshiDensity, 1.0);
+  const dens = document.getElementById('dens'), densVal = document.getElementById('densVal');
+  dens.addEventListener('input', () => {
+    gl.uniform1f(uYoshiDensity, dens.value / 100);
+    densVal.textContent = dens.value + '%';
+  });
+
+  // 上传图片 → 像素化小画布 → 传给对应通道
+  function setChannelTexture(ch, img, w, h){
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;   // 缩小时平滑平均,得到"像素色块"
+    ctx.drawImage(img, 0, 0, w, h);
+    gl.activeTexture(gl.TEXTURE0 + ch);
+    gl.bindTexture(gl.TEXTURE_2D, texs[ch]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+  const jobs = { upSky:[0,'sky',426,240], upYoshi:[1,'yoshi',16,16],
+                 upMario:[2,'mario',16,16], upGoomba:[3,'goomba',16,16] };
+  const filePick = document.getElementById('filePick');
+  let pendingJob = null;
+  for (const id in jobs){
+    document.getElementById(id).addEventListener('click', () => { pendingJob = jobs[id]; filePick.value=''; filePick.click(); });
+  }
+  filePick.addEventListener('change', () => {
+    const f = filePick.files[0];
+    if (!f || !pendingJob) return;
+    const [ch, key, w, h] = pendingJob;
+    const img = new Image();
+    img.onload = () => {
+      setChannelTexture(ch, img, w, h);
+      gl.uniform1f(uHas[key], 1);
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(f);
+  });
+  document.getElementById('resetAll').addEventListener('click', () => {
+    for (const k in uHas) gl.uniform1f(uHas[k], 0);
+  });
+
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio||1, 2);
+    canvas.width  = Math.floor(innerWidth*dpr);
+    canvas.height = Math.floor(innerHeight*dpr);
+    gl.viewport(0,0,canvas.width,canvas.height);
+  }
+  addEventListener('resize', resize); resize();
+
+  let t0 = performance.now();
+  // 空格键暂停/继续(画面与音乐一起)
+  let paused = false, pauseStart = 0;
+  window.__paused = () => paused;
+  window.__visT = () => (paused ? (pauseStart - t0) : (performance.now() - t0)) / 1000;
+  addEventListener('keydown', e => {
+    if (e.code !== 'Space') return;
+    e.preventDefault();
+    paused = !paused;
+    if (paused) {
+      pauseStart = performance.now();
+      if (window.__audioState) window.__audioState.ctx.suspend();
+    } else {
+      t0 += performance.now() - pauseStart;
+      if (window.__audioState) window.__audioState.ctx.resume();
+    }
+  });
+  // 调试:URL 加 #t=秒 可冻结在指定时间(平时忽略)
+  const m = /t=([\d.]+)/.exec(location.hash);
+  const frozen = m ? parseFloat(m[1]) : null;
+  (function frame(){
+    // 整个画面循环
+    gl.uniform3f(uRes, canvas.width, canvas.height, 1);
+    gl.uniform1f(uTime, frozen !== null ? frozen % LOOP
+                 : paused ? ((pauseStart-t0)/1000) % LOOP
+                 : ((performance.now()-t0)/1000) % LOOP);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    requestAnimationFrame(frame);
+  })();
+
+  const hint = document.getElementById('hint');
+  hint.addEventListener('click', () => {
+    hint.remove();
+    t0 = performance.now();          // 视觉循环重启,与音乐对齐
+    startAudio(t0);
+  }, {once:true});
+}
+main().catch(e=>{ document.body.innerHTML = '<pre style="color:#f66">'+e+'</pre>'; });
+</script>
+</body>
+</html>

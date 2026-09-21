@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1905 ARCADE · CREATIVE PORTFOLIO — 逃跑的尽头，是安详</title>
+<style>
+/* ============================================================
+   1905 ARCADE — 复古街机作品集
+   CRT / 霓虹 / 像素 / 合成波 / 35mm 胶片
+   ============================================================ */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('fonts/press-start-2p.woff2') format('woff2');
+  font-display: swap;
+}
+:root {
+  --bg0: #07040f; --bg1: #0d0819; --bg2: #0a0d20;
+  --pink: #ff3ea5; --cyan: #22e0ff; --yellow: #ffe14d; --green: #39ff88; --purple: #8b3dff;
+  --ink: #e8e4f5; --dim: #9a93b8; --faint: #645d80;
+  --px: 'Press Start 2P', ui-monospace, monospace;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", "PingFang SC", "Microsoft YaHei", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { scrollbar-color: #2a2140 #0a0716; }
+body {
+  color: var(--ink); font: 14px/1.9 var(--mono);
+  background:
+    radial-gradient(900px 520px at 50% -80px, rgba(139,61,255,.16), transparent 62%),
+    radial-gradient(700px 420px at 85% 18%, rgba(255,62,165,.07), transparent 60%),
+    radial-gradient(760px 460px at 12% 40%, rgba(34,224,255,.06), transparent 60%),
+    linear-gradient(180deg, var(--bg0), var(--bg1) 40%, var(--bg2) 78%, #060410 100%);
+  overflow-x: hidden;
+}
+a { color: var(--cyan); text-decoration: none; }
+a:hover { text-shadow: 0 0 8px var(--cyan); }
+::selection { background: var(--pink); color: #0a0614; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: #2a2140; border-radius: 5px; }
+::-webkit-scrollbar-track { background: #0a0716; }
+
+/* ---------- 全局 CRT 覆盖层 ---------- */
+#crt { position: fixed; inset: 0; z-index: 95; pointer-events: none; }
+#crt::before { content: ""; position: absolute; inset: 0;   /* 扫描线 */
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply; }
+#crt::after { content: ""; position: absolute; inset: 0;    /* 暗角 + 闪烁 */
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.42) 100%);
+  animation: flick 4.2s steps(60) infinite; }
+#crt .grain { position: absolute; inset: -60px; opacity: .055;   /* 胶片颗粒 */
+  animation: grainJump .8s steps(6) infinite; }
+#crt .rgb { position: absolute; inset: 0; opacity: .05;      /* 伪 RGB 条纹 */
+  background: repeating-linear-gradient(90deg, rgba(255,0,110,.5) 0 1px, rgba(0,255,200,.35) 1px 2px, transparent 2px 3px); }
+@keyframes flick { 0%,100% { opacity: 1; } 50% { opacity: .955; } 62% { opacity: .985; } }
+@keyframes grainJump {
+  0% { transform: translate(0,0); } 25% { transform: translate(-18px,12px); }
+  50% { transform: translate(14px,-16px); } 75% { transform: translate(-10px,-8px); }
+  100% { transform: translate(12px,16px); } }
+@media (prefers-reduced-motion: reduce) { #crt::after, #crt .grain { animation: none; } }
+
+.px { font-family: var(--px); }
+.glow-p { text-shadow: 0 0 6px rgba(255,62,165,.9), 2px 0 0 rgba(34,224,255,.35); }
+.glow-c { text-shadow: 0 0 6px rgba(34,224,255,.9), -2px 0 0 rgba(255,62,165,.35); }
+
+/* ---------- 顶栏 ---------- */
+#topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 22px; font-family: var(--px); font-size: 10px; letter-spacing: .12em;
+  background: linear-gradient(180deg, rgba(7,4,15,.85), rgba(7,4,15,0)); }
+#topbar .brand { color: var(--yellow); text-shadow: 0 0 8px rgba(255,225,77,.75); }
+#topbar .brand i { font-style: normal; color: var(--pink); text-shadow: 0 0 8px rgba(255,62,165,.8); }
+#topbar nav { display: flex; gap: 18px; }
+#topbar nav a { color: var(--dim); font-size: 9px; }
+#topbar nav a:hover { color: var(--cyan); text-shadow: 0 0 8px rgba(34,224,255,.8); }
+@media (max-width: 520px) {
+  #topbar { padding: 10px 14px; }
+  #topbar .brand { font-size: 8px; }
+  #topbar nav { gap: 10px; }
+  #topbar nav a { font-size: 8px; }
+}
+
+/* ================= 钻屏滚动区 ================= */
+#track { height: 360vh; position: relative; }
+#stage { position: sticky; top: 0; height: 100vh; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; }
+/* 远景星野 */
+#stage .stars { position: absolute; inset: 0; opacity: .8;
+  background-image:
+    radial-gradient(1.2px 1.2px at 12% 22%, rgba(255,255,255,.9), transparent 55%),
+    radial-gradient(1px 1px at 30% 64%, rgba(255,255,255,.5), transparent 55%),
+    radial-gradient(1.4px 1.4px at 42% 12%, rgba(190,240,255,.8), transparent 55%),
+    radial-gradient(1px 1px at 56% 40%, rgba(255,255,255,.45), transparent 55%),
+    radial-gradient(1.6px 1.6px at 68% 16%, rgba(255,190,235,.85), transparent 55%),
+    radial-gradient(1px 1px at 78% 56%, rgba(255,255,255,.45), transparent 55%),
+    radial-gradient(1.2px 1.2px at 90% 28%, rgba(255,255,255,.75), transparent 55%),
+    radial-gradient(1px 1px at 6% 74%, rgba(255,255,255,.4), transparent 55%),
+    radial-gradient(1.3px 1.3px at 95% 78%, rgba(160,255,225,.6), transparent 55%),
+    radial-gradient(1px 1px at 35% 88%, rgba(255,255,255,.4), transparent 55%);
+  animation: twk 6s ease-in-out infinite alternate; }
+@keyframes twk { from { opacity: .35; } to { opacity: .85; } }
+/* 合成波地面 */
+#stage .floor { position: absolute; left: -10vw; right: -10vw; bottom: -6vh; height: 38vh;
+  transform: perspective(430px) rotateX(63deg); transform-origin: top center;
+  background:
+    repeating-linear-gradient(90deg, rgba(34,224,255,.14) 0 2px, transparent 2px 84px),
+    repeating-linear-gradient(0deg, rgba(255,62,165,.14) 0 2px, transparent 2px 58px);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 30%);
+          mask-image: linear-gradient(180deg, transparent, #000 30%);
+  opacity: calc(.55 + var(--amb, 0) * .45); }
+#stage .floorglow { position: absolute; left: 50%; bottom: -18vh; width: 130vw; height: 46vh;
+  transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255,62,165,.2), rgba(34,224,255,.08) 42%, transparent 68%);
+  filter: blur(6px); opacity: calc(.7 + var(--amb, 0) * .3); }
+
+/* ---------- 街机（三层：wrap=位移 / pop=入场 / arcade=缩放） ---------- */
+#wrap, #pop { will-change: transform; }
+#pop { animation: rise 1.15s cubic-bezier(.2,.7,.2,1) .15s backwards; }
+@keyframes rise { from { transform: translateY(76px); opacity: 0; } to { transform: none; opacity: 1; } }
+#arcade { position: relative; width: min(400px, 86vw); }
+@media (max-width: 700px) { #arcade { width: min(330px, 90vw); } }
+
+/* 机身高光 */
+#arcade .body {
+  position: relative; border-radius: 18px 18px 10px 10px; padding: 14px 16px 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0) 12%),
+    linear-gradient(180deg, #191227, #120c20 55%, #0d0918);
+  border: 1px solid #2b2145;
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.65),
+    0 0 0 1px rgba(139,61,255,.12),
+    0 0 44px rgba(139,61,255,.16),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+/* 两侧霓虹灯带 */
+#arcade .strip { position: absolute; top: 16%; width: 5px; height: 52%; border-radius: 3px;
+  animation: neonOn 1s ease-out .55s backwards, neonPulse 3.4s ease-in-out 1.6s infinite; }
+#arcade .strip.l { left: -9px; background: var(--pink); box-shadow: 0 0 12px var(--pink), 0 0 34px rgba(255,62,165,.55); }
+#arcade .strip.r { right: -9px; background: var(--cyan); box-shadow: 0 0 12px var(--cyan), 0 0 34px rgba(34,224,255,.5);
+  animation-delay: .75s, 2.2s; }
+@keyframes neonOn { from { opacity: 0; box-shadow: none; } to { opacity: 1; } }
+@keyframes neonPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.5); } }
+
+/* 火炬灯牌 marquee */
+.marquee { font-family: var(--px); text-align: center; font-size: clamp(11px, 2.6vw, 15px);
+  letter-spacing: .1em; color: var(--yellow);
+  padding: 12px 8px 14px; margin: -4px -6px 10px; border-radius: 10px;
+  background: linear-gradient(180deg, #241533, #171024);
+  border: 1px solid #35244d;
+  text-shadow: 0 0 10px rgba(255,225,77,.9), 0 0 30px rgba(255,62,165,.55);
+  box-shadow: inset 0 0 24px rgba(255,62,165,.14), 0 4px 18px rgba(0,0,0,.5);
+  animation: neonOn .9s ease-out .35s backwards, marqueePulse 2.8s ease-in-out 1.4s infinite; }
+@keyframes marqueePulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.28); } }
+
+/* 屏幕 + 边框 */
+.bezel { position: relative; border-radius: 12px; padding: 12px;
+  background: linear-gradient(180deg, #0b0716, #060409);
+  border: 1px solid #241a3a;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), inset 0 6px 22px rgba(0,0,0,.8), 0 6px 22px rgba(0,0,0,.5); }
+.screen { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden;
+  background: #020108; box-shadow: inset 0 0 44px rgba(0,0,0,.85);
+  animation: crtOn 1.25s steps(14) .5s backwards; }
+@keyframes crtOn {
+  0% { filter: brightness(0); } 30% { filter: brightness(2.4) contrast(.6); }
+  45% { filter: brightness(.3); } 62% { filter: brightness(1.9); }
+  80% { filter: brightness(.7); } 100% { filter: brightness(1); } }
+
+/* 屏内幻灯片：三个实时作品 */
+.slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
+.slide.on { opacity: 1; visibility: visible; animation: slideIn .5s ease-out; }
+@keyframes slideIn { from { transform: scale(1.06); filter: brightness(1.7) saturate(.4); }
+  to { transform: none; filter: none; } }
+.slide iframe { width: 100%; height: 100%; border: 0; display: block; }
+.slide iframe { pointer-events: none; }   /* 首页屏内仅展示；操作在 WORKS 卡片的全屏试玩里 */
+
+/* 屏内 CRT 效果 */
+.scr-crt { position: absolute; inset: 0; pointer-events: none; }
+.scr-crt::before { content: ""; position: absolute; inset: 0;   /* 屏内扫描线 */
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }
+.scr-crt::after { content: ""; position: absolute; inset: 0;    /* 屏内暗角 */
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.5) 100%); }
+.scr-glass { position: absolute; inset: 0; pointer-events: none;   /* 玻璃反光 */
+  background: linear-gradient(115deg, rgba(255,255,255,.11) 0%, rgba(255,255,255,.03) 18%, transparent 32%),
+              radial-gradient(ellipse at 20% 0%, rgba(120,220,255,.08), transparent 55%); }
+/* 屏内信息行 */
+.scr-info { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; align-items: center; gap: 7px; padding: 7px 10px; white-space: nowrap; overflow: hidden;
+  font-family: var(--px); font-size: 7px; letter-spacing: .05em; color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(2,1,8,.85) 40%);
+  text-shadow: 0 0 6px rgba(34,224,255,.8); }
+.scr-info .n { color: var(--yellow); text-shadow: 0 0 6px rgba(255,225,77,.9); }
+.scr-info .cursor { width: 6px; height: 10px; background: var(--green); box-shadow: 0 0 6px var(--green);
+  animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+/* 故障特效层 */
+.glitchfx { position: absolute; inset: 0; z-index: 6; pointer-events: none; opacity: 0; }
+.glitchfx.go { animation: glitchFlash .34s steps(6); }
+.glitchfx::before, .glitchfx::after { content: ""; position: absolute; left: 0; right: 0; height: 14%;
+  background: rgba(255,255,255,.14); mix-blend-mode: overlay; }
+.glitchfx::before { top: 22%; } .glitchfx::after { top: 63%; height: 9%; background: rgba(34,224,255,.2); }
+@keyframes glitchFlash {
+  0% { opacity: 1; transform: translateY(0); }
+  20% { opacity: 1; transform: translateY(-6px) scaleY(1.03); }
+  40% { opacity: .6; transform: translateY(5px); }
+  60% { opacity: .9; transform: translateY(-2px) scaleX(1.02); }
+  80% { opacity: .4; transform: translateY(1px); }
+  100% { opacity: 0; transform: none; } }
+.screen.switching .slide.on { animation: glitchShake .3s steps(5); }
+@keyframes glitchShake {
+  0% { transform: none; filter: none; } 25% { transform: translateX(-5px) skewX(2deg); filter: hue-rotate(40deg) saturate(2); }
+  50% { transform: translateX(4px); filter: invert(.15); }
+  75% { transform: translateX(-2px) skewX(-1.5deg); filter: hue-rotate(-30deg); }
+  100% { transform: none; filter: none; } }
+
+/* 控制台面板 */
+.deck { position: relative; margin: 12px -8px -6px; padding: 16px 18px 20px; border-radius: 10px;
+  background: linear-gradient(180deg, #1c1330, #120c20);
+  border: 1px solid #2e2148; box-shadow: inset 0 2px 0 rgba(255,255,255,.05), 0 8px 22px rgba(0,0,0,.55);
+  display: flex; align-items: center; gap: 16px; }
+.joy { position: relative; width: 44px; height: 52px; flex: none; }
+.joy .base { position: absolute; left: 50%; bottom: 0; width: 40px; height: 12px; transform: translateX(-50%);
+  border-radius: 6px; background: linear-gradient(180deg, #2c2148, #171024); border: 1px solid #3a2a5c; }
+.joy .stick { position: absolute; left: 50%; bottom: 8px; width: 6px; height: 30px; transform: translateX(-50%);
+  background: linear-gradient(180deg, #8f86ad, #4c4370); border-radius: 3px;
+  transform-origin: bottom center; animation: joySway 5s ease-in-out infinite; }
+.joy .ball { position: absolute; left: 50%; bottom: 34px; width: 16px; height: 16px; transform: translateX(-50%);
+  border-radius: 50%; background: radial-gradient(circle at 34% 30%, #ff8ac6, var(--pink) 58%, #99104f);
+  box-shadow: 0 0 12px rgba(255,62,165,.75); animation: joySway 5s ease-in-out infinite; }
+@keyframes joySway { 0%,100% { rotate: 0deg; } 30% { rotate: 7deg; } 65% { rotate: -6deg; } }
+.pbtns { display: flex; gap: 12px; flex: 1; justify-content: center; }
+.pbtn { width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+  background: radial-gradient(circle at 34% 30%, #fff8, transparent 42%), var(--c);
+  box-shadow: 0 0 10px var(--c), 0 3px 0 rgba(0,0,0,.5), inset 0 -3px 6px rgba(0,0,0,.4);
+  animation: neonOn .8s ease-out var(--d, 1s) backwards;
+  transition: transform .12s; }
+.pbtn:hover { transform: scale(1.14); }
+.pbtn:active { transform: scale(.92); }
+.pbtn span { display: none; }
+.coinbox { flex: none; width: 74px; padding: 8px 8px 6px; border-radius: 7px; cursor: pointer;
+  background: linear-gradient(180deg, #0f0a1c, #0a0614); border: 1px solid #2e2148; text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+.coinbox .slot { width: 34px; height: 5px; margin: 0 auto 5px; border-radius: 3px;
+  background: #000; box-shadow: 0 0 0 1px #3a2a5c, inset 0 0 4px var(--green); }
+.coinbox em { display: block; font: 6px/1.5 var(--px); font-style: normal; color: var(--green);
+  text-shadow: 0 0 5px rgba(57,255,136,.8); letter-spacing: .08em; }
+.coinbox:hover .slot { box-shadow: 0 0 0 1px #3a2a5c, inset 0 0 6px var(--yellow); }
+
+/* 机脚 */
+.legs { display: flex; justify-content: space-between; padding: 0 26px; }
+.legs i { width: 44px; height: 20px; background: linear-gradient(180deg, #120c20, #060409);
+  border: 1px solid #221839; border-top: 0; border-radius: 0 0 6px 6px; }
+
+/* SCROLL TO ENTER 提示 */
+.hint { position: absolute; left: 50%; bottom: 4.5vh; transform: translateX(-50%);
+  text-align: center; font-family: var(--px); font-size: 10px; color: var(--dim);
+  letter-spacing: .18em; text-shadow: 0 0 10px rgba(34,224,255,.5); z-index: 3; }
+.hint .zh { font: 12px/2.4 var(--mono); color: var(--faint); letter-spacing: .5em; }
+.hint .tri { display: block; margin: 6px auto 0; width: 0; height: 0;
+  border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 9px solid var(--cyan);
+  filter: drop-shadow(0 0 6px var(--cyan)); animation: bob 1.4s ease-in-out infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(7px); opacity: .55; } }
+
+/* 钻屏时：机身高亮渐隐（穿过屏幕的瞬间只剩画面） */
+#stage .chrome { transition: none; }
+#pop { --fade: 0; }
+#pop .chromeFade { opacity: calc(1 - var(--fade)); }
+
+/* ================= WORKS：胶片轮播 ================= */
+#works { position: relative; z-index: 2; padding: 110px 0 60px;
+  background:
+    radial-gradient(1000px 400px at 50% 0, rgba(139,61,255,.12), transparent 70%),
+    linear-gradient(180deg, #060409 0%, var(--bg1) 14%, var(--bg2) 60%, #060410 100%);
+  border-top: 1px solid #241a3a; }
+.works-head { text-align: center; margin-bottom: 54px; padding: 0 20px; }
+.works-head h2 { margin: 0; font-family: var(--px); font-size: clamp(20px, 4.6vw, 38px); letter-spacing: .08em;
+  color: #fff; text-shadow: 2px 0 0 rgba(255,62,165,.8), -2px 0 0 rgba(34,224,255,.8), 0 0 26px rgba(139,61,255,.6); }
+.works-head .sub { margin: 16px 0 0; color: var(--dim); font-size: 12.5px; letter-spacing: .2em; }
+.works-head .sub b { color: var(--yellow); font-weight: 600; }
+
+/* 35mm 胶片条 */
+#strip { overflow-x: auto; scrollbar-width: none; cursor: grab; touch-action: pan-y;
+  padding: 30px 0 44px; outline: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+#strip::-webkit-scrollbar { display: none; }
+#strip.grabbing { cursor: grabbing; }
+.reel { display: flex; width: max-content; }
+.set { display: flex; gap: clamp(26px, 4vw, 46px); padding-right: clamp(26px, 4vw, 46px); }
+
+/* 胶片卡片 */
+.card { --boost: 1; position: relative; width: min(400px, 78vw); flex: none;
+  transform: translateY(var(--dy, 0)) rotate(var(--rot, 0deg)) scale(var(--boost));
+  transition: transform .25s ease-out; }
+.card:nth-child(3n+1) { --rot: -1.1deg; --dy: 7px; }
+.card:nth-child(3n+2) { --rot: .8deg;  --dy: -9px; }
+.card:nth-child(3n)   { --rot: -.5deg; --dy: 3px; }
+.card .filmframe {
+  background: linear-gradient(180deg, #17111f, #0d0913);
+  border: 1px solid #2c2140; border-radius: 6px; overflow: hidden;
+  box-shadow: 0 18px 44px rgba(0,0,0,.6);
+  transition: box-shadow .25s, border-color .25s; }
+.card:hover .filmframe, .card.cur .filmframe {
+  border-color: color-mix(in srgb, var(--ac) 65%, transparent);
+  box-shadow: 0 22px 60px rgba(0,0,0,.7), 0 0 30px color-mix(in srgb, var(--ac) 32%, transparent); }
+.holes { height: 17px; background-image: radial-gradient(circle 3.5px at 12px 50%, #05030a 97%, transparent);
+  background-size: 24px 100%; background-repeat: repeat-x; background-position: 6px center;
+  border-bottom: 1px dashed #241a30; }
+.holes.b { border-bottom: 0; border-top: 1px dashed #241a30; }
+.cover { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: saturate(1.05) contrast(1.03); }
+.cover::after { content: ""; position: absolute; inset: 0; pointer-events: none;  /* 覆盖图上的扫描线 */
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.13) 0 1px, transparent 1px 3px); }
+.cap { padding: 14px 16px 15px; }
+.cap .l1 { display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--px); font-size: 8px; color: var(--faint); letter-spacing: .1em; margin-bottom: 9px; }
+.cap .l1 .year { color: var(--ac); text-shadow: 0 0 6px color-mix(in srgb, var(--ac) 80%, transparent); }
+.cap h3 { margin: 0 0 3px; font-family: var(--px); font-size: clamp(10px, 1.5vw, 13px); line-height: 1.7;
+  color: #fff; text-shadow: 0 0 10px color-mix(in srgb, var(--ac) 55%, transparent); }
+.cap .zh { margin: 0 0 8px; font-size: 12px; color: var(--dim); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.tags i { font: 8.5px/1 var(--px); font-style: normal; color: var(--ac); letter-spacing: .08em;
+  border: 1px solid color-mix(in srgb, var(--ac) 45%, transparent); border-radius: 3px; padding: 4px 7px; }
+.desc { margin: 0 0 10px; font-size: 12.5px; color: #bdb6d6; }
+.more { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .35s ease, opacity .3s; }
+.card:hover .more, .card.cur .more { max-height: 120px; opacity: 1; }
+@media (hover: none) { .more { max-height: 120px; opacity: 1; } }   /* 触屏无 hover：常显操作区 */
+.more .role { font-size: 11px; color: var(--faint); margin: 0 0 8px; }
+.more .role b { color: var(--green); font-weight: 600; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.acts a, .acts button { font: 8.5px/1 var(--px); letter-spacing: .08em; cursor: pointer;
+  color: #0a0614; background: var(--ac); border: 0; border-radius: 4px; padding: 8px 10px;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ac) 55%, transparent); }
+.acts a { color: var(--ink); background: transparent; border: 1px solid #352a52; box-shadow: none; }
+.acts a:hover { border-color: var(--cyan); color: var(--cyan); }
+.acts a, .acts button { transition: transform .12s; }
+.acts a:hover, .acts button:hover { transform: translateY(-2px); }
+/* 卡片侧边的胶片编号 */
+.fno { position: absolute; top: 46px; left: -17px; writing-mode: vertical-rl;
+  font: 7.5px var(--px); letter-spacing: .3em; color: #4c4468; }
+/* 轮播操作提示 */
+.strip-hints { text-align: center; font: 9px var(--px); color: var(--faint); letter-spacing: .22em; }
+.strip-hints b { color: var(--dim); }
+
+/* ================= EMOTION 情绪条 ================= */
+#emo { padding: 40px 24px 90px; text-align: center; }
+#emo .line { max-width: 760px; margin: 0 auto 26px; color: #d9d3ec; font-size: 15px; }
+#emo .line b { color: var(--pink); text-shadow: 0 0 10px rgba(255,62,165,.6); }
+#emo .chips { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+#emo .chips span { font: 9px var(--px); letter-spacing: .1em; color: var(--c);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); border-radius: 999px; padding: 9px 16px;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--c) 22%, transparent); }
+#emo .ttl { font: 9px var(--px); color: var(--faint); letter-spacing: .3em; margin-bottom: 18px; }
+
+/* ================= FOOTER ================= */
+footer.site { border-top: 1px solid #241a3a; padding: 44px 24px 60px;
+  background: linear-gradient(180deg, transparent, rgba(3,2,8,.7)); }
+footer.site .wrap { max-width: 1080px; margin: 0 auto; }
+footer.site h3 { margin: 0 0 18px; font: 10px var(--px); letter-spacing: .3em; color: var(--dim); }
+.credits { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 40px; font-size: 12.5px; color: var(--dim); }
+.credits .lic { color: var(--faint); font-size: 11px; }
+.team { margin: 24px 0 0; font-size: 12.5px; color: var(--dim); }
+.fineprint { margin: 18px 0 0; font-size: 11px; color: var(--faint); }
+@media (max-width: 760px) { .credits { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- 全局 CRT 效果 -->
+<div id="crt" aria-hidden="true"><div class="grain"></div><div class="rgb"></div></div>
+
+<!-- 顶栏 -->
+<header id="topbar">
+  <span class="brand">[<i>1905</i>] CREATIVE_PORTFOLIO</span>
+  <nav>
+    <a href="#works">WORKS</a><a href="#emo">EMOTION</a><a href="#credits">CREDITS</a>
+  </nav>
+</header>
+
+<!-- ============ HERO：街机 + 钻屏滚动 ============ -->
+<section id="track">
+  <div id="stage">
+    <div class="stars"></div>
+    <div class="floor"></div>
+    <div class="floorglow"></div>
+
+    <div id="wrap"><div id="pop"><div id="arcade">
+      <div class="body">
+        <i class="strip l chromeFade"></i><i class="strip r chromeFade"></i>
+        <div class="marquee chromeFade">★ 1905 ARCADE ★</div>
+        <div class="bezel">
+          <div class="screen" id="screen">
+            <div class="slide" data-i="0"><iframe title="mario-escape-to-peace" allow="fullscreen" tabindex="-1"></iframe></div>
+            <div class="slide" data-i="1"><iframe title="serene-escape-unlimited" allow="fullscreen" tabindex="-1"></iframe></div>
+            <div class="slide" data-i="2"><iframe title="tm-gyroid-2" allow="camera; fullscreen" tabindex="-1"></iframe></div>
+            <div class="scr-crt"></div>
+            <div class="scr-glass"></div>
+            <div class="glitchfx" id="glitchfx"></div>
+            <div class="scr-info chromeFade">
+              <span class="n" id="scrNo">01</span><span id="scrName">MARIO ESCAPE TO PEACE</span>
+              <span class="n" id="scrYear">©2026</span><span id="scrTags">SHADER·PIXEL</span>
+              <span class="cursor"></span>
+            </div>
+          </div>
+        </div>
+        <div class="deck chromeFade">
+          <div class="joy" aria-hidden="true"><i class="base"></i><i class="stick"></i><i class="ball"></i></div>
+          <div class="pbtns">
+            <button class="pbtn" style="--c:#ff3ea5; --d:.9s" data-go="0" title="作品 01"></button>
+            <button class="pbtn" style="--c:#ffe14d; --d:1.05s" data-go="1" title="作品 02"></button>
+            <button class="pbtn" style="--c:#22e0ff; --d:1.2s" data-go="2" title="作品 03"></button>
+            <button class="pbtn" style="--c:#39ff88; --d:1.35s" data-go="g" title="随机故障 ✦"></button>
+          </div>
+          <div class="coinbox" id="coin" title="投币 ↯">
+            <div class="slot"></div><em>INSERT<br>COIN</em>
+          </div>
+        </div>
+      </div>
+      <div class="legs chromeFade"><i></i><i></i></div>
+    </div></div></div>
+
+    <div class="hint" id="hint">
+      SCROLL TO ENTER
+      <span class="zh">滚动进入</span>
+      <i class="tri"></i>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WORKS：胶片轮播 ============ -->
+<section id="works">
+  <div class="works-head">
+    <h2>1905 WORKS</h2>
+    <p class="sub">三件实时 SHADER 作品 · 35MM FILM STRIP · <b>拖拽 / 滚轮 / ← →</b> · 点击卡片试玩</p>
+  </div>
+
+  <div id="strip" tabindex="0" aria-label="作品胶片轮播">
+    <div class="reel" id="reel"><!-- JS 注入 4 组卡片 --></div>
+  </div>
+  <p class="strip-hints">◂ DRAG ▸ · WHEEL ▸ · ◂ ▸ KEYS · AUTO-REEL ALWAYS ON</p>
+</section>
+
+<!-- ============ EMOTION ============ -->
+<section id="emo">
+  <p class="ttl px">EMOTION ARC ▸ 小组情绪目标</p>
+  <p class="line"><b>允许自己先逃</b>——然后在逃跑的路上，把速度、颜色和音乐一点点调慢，直到抵达安详。</p>
+  <div class="chips">
+    <span style="--c:#ff5a5f">01 疾奔 → 释怀</span>
+    <span style="--c:#ff3ea5">02 渐缓 → 被接住</span>
+    <span style="--c:#22e0ff">03 心流 → 安详</span>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site" id="credits">
+  <div class="wrap">
+    <h3>REFERENCES · 参考与致谢</h3>
+    <div class="credits">
+      <div>01 · <a href="https://www.shadertoy.com/view/XtlSD7" target="_blank" rel="noopener">Mario World 1-1</a> — knarkowicz <span class="lic">（CC BY-NC-SA 3.0）</span></div>
+      <div>02 · <a href="https://www.shadertoy.com/view/wtS3W3" target="_blank" rel="noopener">Sunset Drive Unlimited</a> — spolsh, 2019 <span class="lic">（CC BY-NC-SA 3.0 · 氛围曲 Lifelike – So Electric）</span></div>
+      <div>03 · <a href="https://www.shadertoy.com/view/tXtyW8" target="_blank" rel="noopener">tm gyroid 2</a> — tubeman <span class="lic">（CC BY-NC-SA 3.0）</span></div>
+      <div>彩蛋 · <a href="https://www.shadertoy.com/view/Xs3GWj" target="_blank" rel="noopener">GrafEq</a> — David A Roberts, 2016 <span class="lic">（PIPERWONG 仓库中的第二件复刻）</span></div>
+    </div>
+    <p class="team">1905 小组 ·
+      <a href="https://github.com/youge96youge-boop" target="_blank" rel="noopener">@youge96youge-boop</a> ·
+      <a href="https://github.com/manyuju" target="_blank" rel="noopener">@manyuju</a> ·
+      <a href="https://github.com/PIPERWONG" target="_blank" rel="noopener">@PIPERWONG</a>
+    </p>
+    <p class="fineprint">所有原作 shader 均为 CC BY-NC-SA 3.0，本页与三个改编项目仅作课程学习展示，保留原署名、非商业使用。街机屏幕与封面均为三件作品的本地实时画面。</p>
+  </div>
+</footer>
+
+<script>
+/* ================================================================
+   1905 ARCADE — 数据
+================================================================ */
+const WORKS = [
+  {
+    id: 'mario', no: '01', frame: '05A', name: 'MARIO ESCAPE TO PEACE', zh: '跑路之后变安详 · Mario 1-1 改编',
+    year: '©2026', tags: ['SHADER', 'PIXEL', '8-BIT'], role: 'youge96youge-boop', ac: '#ff5a5f', emo: '释怀',
+    src: 'mario/index.html', cover: 'covers/mario.png',
+    desc: '跑完 1-1 没有公主，只有一张床：耀西群散场、小星星转柔板，马里奥躺下睡着，鸽子落在肚子上。',
+    repo: 'https://github.com/youge96youge-boop/mario-escape-to-peace',
+    orig: 'https://www.shadertoy.com/view/XtlSD7', origName: 'XtlSD7',
+  },
+  {
+    id: 'drive', no: '02', frame: '12B', name: 'SERENE ESCAPE UNLIMITED', zh: '安详逃亡 · 无尽公路',
+    year: '©2026', tags: ['RAYMARCH', 'SYNTHWAVE', 'WEBGL2'], role: 'manyuju', ac: '#ff3ea5', emo: '被接住',
+    src: 'drive/index.html', cover: 'covers/drive.png',
+    desc: '撞车永远不算失败：每收一枚安详光点配乐 BPM 真的会降，天空从条纹落日一路开进星空与极光。',
+    repo: 'https://github.com/manyuju/serene-escape-unlimited',
+    orig: 'https://www.shadertoy.com/view/wtS3W3', origName: 'wtS3W3',
+  },
+  {
+    id: 'gyroid', no: '03', frame: '21C', name: 'TM GYROID 2 · DRIVE', zh: '无限陀螺迷宫 · 驾驶版',
+    year: '©2026', tags: ['SDF', 'NEON', 'CAMERA'], role: 'PIPERWONG', ac: '#22e0ff', emo: '心流',
+    src: 'gyroid/index.html', cover: 'covers/gyroid.png',
+    desc: '移动身体即可转向，在两套互扣的 gyroid 孔洞里穿行拾星——没有尽头，也不需要有。',
+    repo: 'https://github.com/PIPERWONG/THU',
+    orig: 'https://www.shadertoy.com/view/tXtyW8', origName: 'tXtyW8',
+  },
+];
+
+/* ================================================================
+   胶片颗粒（运行时生成噪声贴图）
+================================================================ */
+(function grain() {
+  const c = document.createElement('canvas'); c.width = c.height = 140;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(140, 140);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() * 255 | 0;
+    img.data[i] = img.data[i+1] = img.data[i+2] = v; img.data[i+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  document.querySelector('#crt .grain').style.background = `url(${c.toDataURL()})`;
+})();
+
+/* ================================================================
+   街机屏幕：三件实时作品轮播（2.8s 切换 + 故障转场）
+   非活动画面通过 embed-bridge 暂停，保证只有一份 GPU 负载
+================================================================ */
+const slides = [...document.querySelectorAll('.slide')];
+const scr = document.getElementById('screen');
+const fx = document.getElementById('glitchfx');
+const scrNo = document.getElementById('scrNo'), scrName = document.getElementById('scrName'),
+      scrYear = document.getElementById('scrYear'), scrTags = document.getElementById('scrTags');
+let cur = 0, cycleTimer = null, cyclePaused = false;
+
+function loadSlide(i, delay) {
+  setTimeout(() => {
+    const f = slides[i].querySelector('iframe');
+    if (!f.src) { f.src = WORKS[i].src; slides[i].dataset.loaded = '1'; }
+  }, delay);
+}
+function post(i, type) {
+  const f = slides[i].querySelector('iframe');
+  if (f.src && f.contentWindow) { try { f.contentWindow.postMessage({ __showcase: true, type }, '*'); } catch (e) {} }
+}
+function glitchFX() {
+  scr.classList.add('switching');
+  fx.classList.remove('go'); void fx.offsetWidth; fx.classList.add('go');
+  setTimeout(() => scr.classList.remove('switching'), 340);
+}
+function show(i) {
+  if (i === cur || !slides[i].dataset.loaded) return;
+  glitchFX();
+  setTimeout(() => {
+    post(cur, 'pause');
+    slides[cur].classList.remove('on');
+    cur = i;
+    slides[cur].classList.add('on');
+    post(cur, 'resume');
+    const w = WORKS[cur];
+    scrNo.textContent = w.no; scrName.textContent = w.name;
+    scrYear.textContent = w.year; scrTags.textContent = w.tags.join('·');
+  }, 150);
+}
+function startCycle() { clearInterval(cycleTimer); cycleTimer = setInterval(() => show((cur + 1) % slides.length), 2800); }
+slides[0].classList.add('on');
+loadSlide(0, 500); loadSlide(1, 1100); loadSlide(2, 1700);
+startCycle();
+
+/* 街机按钮：1/2/3 切换作品，第 4 颗随机故障 */
+document.querySelectorAll('.pbtn').forEach(b => b.addEventListener('click', () => {
+  const v = b.dataset.go;
+  if (v === 'g') { glitchFX(); return; }
+  show(+v); startCycle();
+}));
+/* 投币：触发一次强故障 + 信息栏闪币 */
+document.getElementById('coin').addEventListener('click', () => {
+  glitchFX();
+  const old = scrNo.textContent; scrNo.textContent = '¥1';
+  setTimeout(() => scrNo.textContent = old, 900);
+});
+
+/* ================================================================
+   钻屏滚动：进度控制 街机缩放 + 机壳融化 + 提示淡出
+================================================================ */
+const track = document.getElementById('track'), stage = document.getElementById('stage'),
+      wrap = document.getElementById('wrap'), pop = document.getElementById('pop'),
+      arcade = document.getElementById('arcade'), screenEl = document.getElementById('screen'),
+      hint = document.getElementById('hint');
+let M = null;   // 度量：屏幕几何 + 所需最大缩放
+
+function measure() {
+  const keepW = wrap.style.transform; wrap.style.transform = '';
+  const keepA = arcade.style.transform; arcade.style.transform = '';
+  const sr = screenEl.getBoundingClientRect();
+  const ar = arcade.getBoundingClientRect();
+  const vw = innerWidth, vh = innerHeight;
+  M = {
+    sw: sr.width, sh: sr.height,
+    ox: sr.left + sr.width / 2 - vw / 2,
+    oy: sr.top + sr.height / 2 - vh / 2,
+    orx: sr.left + sr.width / 2 - ar.left,
+    ory: sr.top + sr.height / 2 - ar.top,
+    S: Math.max(vw / sr.width, vh / sr.height) * 1.14,
+    vw, vh,
+  };
+  wrap.style.transform = keepW; arcade.style.transform = keepA;
+}
+const easeInOutQuart = t => t < .5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
+const clamp01 = v => Math.max(0, Math.min(1, v));
+let zoomZ = 0;
+
+function onScroll() {
+  if (!M) return;
+  const tr = track.getBoundingClientRect();
+  const p = clamp01(-tr.top / (track.offsetHeight - innerHeight));
+  const z = easeInOutQuart(clamp01((p - .08) / .76));
+  zoomZ = z;
+  const s = 1 + (M.S - 1) * z;
+  wrap.style.transform = `translate(${(-M.ox * z * .55).toFixed(2)}px, ${(-M.oy * z * .55).toFixed(2)}px)`;
+  arcade.style.transformOrigin = `${M.orx}px ${M.ory}px`;
+  arcade.style.transform = `scale(${s.toFixed(4)})`;
+  pop.style.setProperty('--fade', clamp01((z - .82) / .18).toFixed(3));
+  stage.style.setProperty('--amb', z.toFixed(3));
+  hint.style.opacity = clamp01(1 - p * 14).toFixed(2);
+  /* 钻屏中段暂停轮播，专注当前画面 */
+  if (z > .3 && !cyclePaused) { cyclePaused = true; clearInterval(cycleTimer); }
+  if (z <= .3 && cyclePaused) { cyclePaused = false; startCycle(); }
+}
+addEventListener('scroll', onScroll, { passive: true });
+addEventListener('resize', () => { measure(); onScroll(); });
+measure(); onScroll();
+
+/* 页面不可见 / 街机离屏时全部暂停 */
+new IntersectionObserver(es => {
+  const vis = es[0].isIntersecting;
+  post(cur, vis && !cyclePaused ? 'resume' : 'pause');
+  if (vis) startCycle(); else clearInterval(cycleTimer);
+}, { threshold: .05 }).observe(stage);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { post(cur, 'pause'); clearInterval(cycleTimer); }
+  else if (!cyclePaused) { post(cur, 'resume'); startCycle(); }
+});
+
+/* ================================================================
+   WORKS：35mm 胶片卡片（4 组循环）
+================================================================ */
+const reel = document.getElementById('reel');
+function cardHTML(w) {
+  return `
+  <article class="card" style="--ac:${w.ac}">
+    <span class="fno">1905 ▸ ${w.frame}</span>
+    <div class="filmframe">
+      <div class="holes"></div>
+      <div class="cover"><img src="${w.cover}" alt="${w.name}"></div>
+      <div class="cap">
+        <div class="l1"><span>FR ▸ ${w.frame}</span><span class="year">${w.year}</span></div>
+        <h3>${w.name}</h3>
+        <p class="zh">${w.zh}</p>
+        <div class="tags">${w.tags.map(t => `<i>${t}</i>`).join('')}</div>
+        <p class="desc">${w.desc}</p>
+        <div class="more">
+          <p class="role">MADE BY <b>@${w.role}</b> · 情绪关键词 ▸ <b>${w.emo}</b></p>
+          <div class="acts">
+            <button data-play="${w.id}">▶ PLAY</button>
+            <a href="${w.src}" target="_blank" rel="noopener">FULLSCREEN ↗</a>
+            <a href="${w.repo}" target="_blank" rel="noopener">GITHUB</a>
+            <a href="${w.orig}" target="_blank" rel="noopener">SHADERTOY ${w.origName} ↗</a>
+          </div>
+        </div>
+      </div>
+      <div class="holes b"></div>
+    </div>
+  </article>`;
+}
+reel.innerHTML = Array.from({ length: 4 }, () => `<div class="set">${WORKS.map(cardHTML).join('')}</div>`).join('');
+
+/* 播放按钮 → 回到街机并切到该作品 */
+reel.addEventListener('click', e => {
+  const b = e.target.closest('[data-play]');
+  if (!b || dragMoved) return;
+  const i = WORKS.findIndex(w => w.id === b.dataset.play);
+  scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => { show(i); startCycle(); }, 650);
+});
+
+/* ---------- 轮播引擎：自动 + 惯性 + 拖拽 + 滚轮 + 键盘 ---------- */
+const strip = document.getElementById('strip');
+let pos = 0, GW = 0, P0 = 0, vel = 0, dragging = false, dragMoved = false,
+    hoverPause = false, idleUntil = 0, lastX = 0, hoverTimer = null;
+
+function metrics2() {
+  const sets = reel.children;
+  GW = sets.length > 1 ? sets[1].offsetLeft - sets[0].offsetLeft : reel.scrollWidth;
+  P0 = sets[0].offsetLeft;
+}
+metrics2(); addEventListener('resize', metrics2);
+pos = P0 + GW * 1.15;
+
+function wrapPos() { while (pos >= P0 + 2 * GW) pos -= GW; while (pos < P0 + GW) pos += GW; }
+function userAct() { idleUntil = performance.now() + 1500; }
+
+let lastT = performance.now();
+(function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(now - lastT, 50); lastT = now;
+  if (!dragging) {
+    vel *= Math.pow(.938, dt / 16.7);
+    pos += vel * dt / 16.7;
+    if (!hoverPause && now > idleUntil) pos += .055 * dt;   // 低速自动滚动 ≈ 55px/s
+  }
+  wrapPos(); strip.scrollLeft = pos;
+
+  /* 中央卡片放大 + 当前卡高亮 */
+  const mid = innerWidth / 2;
+  document.querySelectorAll('.card').forEach(c => {
+    const r = c.getBoundingClientRect();
+    if (r.right < -60 || r.left > innerWidth + 60) return;
+    const d = Math.abs(r.left + r.width / 2 - mid) / (innerWidth * .55);
+    const b = 1 + .07 * Math.pow(Math.max(0, 1 - d), 2);
+    c.style.setProperty('--boost', b.toFixed(4));
+    c.classList.toggle('cur', d < .12);
+  });
+})(lastT);
+
+strip.addEventListener('pointerdown', e => {
+  if (e.target.closest('a, button')) return;   // 按钮和链接交给原生点击，不进入拖拽
+  dragging = true; dragMoved = false; lastX = e.clientX; vel = 0;
+  strip.classList.add('grabbing'); strip.setPointerCapture(e.pointerId);
+});
+strip.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX; lastX = e.clientX;
+  if (Math.abs(dx) > 2) dragMoved = true;
+  pos -= dx;
+  vel = Math.max(-52, Math.min(52, vel * .65 - dx * 1.5));   // 限幅惯性，别把胶片甩飞
+  wrapPos();
+});
+/* 拖拽后的第一次点击不落到卡片链接上 */
+strip.addEventListener('click', e => {
+  if (dragMoved) { e.preventDefault(); e.stopPropagation(); dragMoved = false; }
+}, true);
+function endDrag() { if (!dragging) return; dragging = false; strip.classList.remove('grabbing'); userAct(); }
+strip.addEventListener('pointerup', endDrag);
+strip.addEventListener('pointercancel', endDrag);
+strip.addEventListener('wheel', e => {
+  e.preventDefault();
+  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  pos += d * 1.15; vel = 0; wrapPos(); userAct();
+}, { passive: false });
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { pos += 430; vel = 0; userAct(); }
+  if (e.key === 'ArrowLeft')  { pos -= 430; vel = 0; userAct(); }
+});
+strip.addEventListener('mouseenter', () => { hoverPause = true; clearTimeout(hoverTimer); });
+strip.addEventListener('mouseleave', () => { hoverTimer = setTimeout(() => hoverPause = false, 900); });
+</script>
+</body>
+</html>

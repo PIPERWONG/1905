@@ -1,0 +1,53 @@
+LICENSE / 许可证
+================
+
+本项目基于 Shadertoy 上的公开作品改编,采用
+Creative Commons 署名-非商业性使用-相同方式共享 3.0(CC BY-NC-SA 3.0)许可。
+
+Original work / 原作
+--------------------
+Sunset Drive Unlimited
+https://www.shadertoy.com/view/wtS3W3
+Copyright (c) 2019 spolsh (Michal Klos)
+
+`shaders/` 目录下的 GLSL 源码提取自上述公开页面,
+每个文件头部均保留原作者的版权与许可声明。
+
+License summary / 许可摘要
+--------------------------
+You are free to / 您可以自由地:
+
+  * Share — copy and redistribute the material in any medium or format
+    共享 — 在任何媒介以任何形式复制、发行本作品
+  * Adapt — remix, transform, and build upon the material
+    演绎 — 修改、转换或以本作品为基础进行创作
+
+Under the following terms / 惟须遵守下列条件:
+
+  * Attribution / 署名 — You must give appropriate credit, provide a link to
+    the license, and indicate if changes were made.
+    您必须给出适当的署名,提供许可协议链接,并标明是否作了修改。
+  * NonCommercial / 非商业性使用 — You may not use the material for
+    commercial purposes.
+    您不得将本作品用于商业目的。
+  * ShareAlike / 相同方式共享 — If you remix, transform, or build upon the
+    material, you must distribute your contributions under the same license.
+    若您再混合、转换或基于本作品进行创作,必须以与原许可协议相同的
+    许可协议分发您贡献的作品。
+
+Full license text / 许可协议全文:
+https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
+中文参考:https://creativecommons.org/licenses/by-nc-sa/3.0/deed.zh
+
+Additional notes / 补充说明
+---------------------------
+* Runtime, build scripts, and overlay UI code in this repository are
+  adaptations of the original work and are distributed under the same
+  CC BY-NC-SA 3.0 license, with attribution to the original author.
+  本仓库中的运行时、构建脚本与界面代码为原作的改编,依同一许可发布,
+  署名归原作者 spolsh (Michal Klos)。
+* The original music referenced by the Shadertoy page ("So Electric" by
+  Lifelike, uploaded by rombo_rama) is NOT included in this repository.
+  原作页面引用的 SoundCloud 音乐未包含在本仓库中。
+* This project is for learning and research only. / 本项目仅供学习研究,
+  禁止商业用途。
